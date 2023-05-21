@@ -22,18 +22,18 @@ import vizdoom as vzd
 
 
 # tf.compat.v1.enable_eager_execution()
-tf.executing_eagerly()
+# tf.executing_eagerly()
 
 # Q-learning settings
 learning_rate = 0.00025
 discount_factor = 0.99
 replay_memory_size = 10000
-num_train_epochs = 1
+num_train_epochs = 10
 learning_steps_per_epoch = 2000
 target_net_update_steps = 1000
 
 # NN learning settings
-batch_size = 32
+batch_size = 16
 
 # Training regime
 test_episodes_per_epoch = 100
@@ -46,7 +46,7 @@ episodes_to_watch = 20
 save_model = True
 load = False
 skip_learning = False
-watch = False
+watch = True
 
 # Configuration file path
 config_file_path = os.path.join(vzd.scenarios_path, "multi.cfg")
@@ -68,25 +68,13 @@ def preprocess(img):
     return tf.stack(img)
 
 
-# def initialize_game():
-#     print("Initializing doom...")
-#     game = vzd.DoomGame()
-#     game.load_config(config_file_path)
-#     game.set_window_visible(False)
-#     game.set_mode(vzd.Mode.PLAYER)
-#     game.set_screen_format(vzd.ScreenFormat.GRAY8)
-#     game.set_screen_resolution(vzd.ScreenResolution.RES_640X480)
-#     game.init()
-#     print("Doom initialized.")
-
-#     return game
 def initialize_game():
     print("Initializing doom...")
     game = vzd.DoomGame()
     game.load_config(config_file_path)
-    # game.set_doom_map("map04")
-    # game.set_window_visible(False)
-    # game.set_mode(vzd.Mode.PLAYER)
+    game.set_doom_map("map04")
+    game.set_window_visible(True)
+    game.set_mode(vzd.Mode.PLAYER)
     game.set_screen_format(vzd.ScreenFormat.GRAY8)
     # game.set_screen_resolution(vzd.ScreenResolution.RES_640X480)
     game.add_game_args("-join 127.0.0.1 -port 5029") 
@@ -95,6 +83,7 @@ def initialize_game():
     print("Doom initialized.")
 
     return game
+
 
 class DQNAgent:
     def __init__(
@@ -135,7 +124,6 @@ class DQNAgent:
 
         with tf.GradientTape() as tape:
             tape.watch(self.dqn.trainable_variables)
-            print(f"screen_buf: {screen_buf.shape}")
 
             Q_prev = tf.gather_nd(self.dqn(screen_buf), ids)
 
@@ -190,19 +178,18 @@ def get_samples(memory):
     return sample(memory, sample_size)
 
 
-def run(agent, game, replay_memory, actions = None):
+def run(agent, game, replay_memory):
     time_start = time()
 
     for episode in range(num_train_epochs):
         train_scores = []
         print("\nEpoch %d\n-------" % (episode + 1))
 
-        # game.new_episode()
+        game.new_episode()
 
         for i in trange(learning_steps_per_epoch, leave=False):
             state = game.get_state()
             screen_buf = preprocess(state.screen_buffer)
-
             action = agent.choose_action(screen_buf)
             reward = game.make_action(actions[action], frames_per_action)
             done = game.is_episode_finished()
@@ -309,6 +296,7 @@ class DQN(Model):
 if __name__ == "__main__":
     agent = DQNAgent()
     game = initialize_game()
+
     replay_memory = deque(maxlen=replay_memory_size)
 
     n = game.get_available_buttons_size()

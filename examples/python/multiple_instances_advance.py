@@ -6,7 +6,7 @@ import os
 from multiprocessing import Process, cpu_count
 from random import choice, random
 from time import sleep, time
-
+from learning_tensorflow import *
 import vizdoom as vzd
 
 
@@ -14,39 +14,42 @@ import vizdoom as vzd
 # from threading import Thread
 
 # Config
-episodes = 1
+episodes = 2
 timelimit = 1  # minutes
-players = 8  # number of players
+players = 3  # number of players
 
 skip = 4
-mode = vzd.Mode.PLAYER  # or Mode.ASYNC_PLAYER
-ticrate = 2 * vzd.DEFAULT_TICRATE  # for Mode.ASYNC_PLAYER
+# mode = vzd.Mode.ASYNC_PLAYER  # or Mode.PLAYER
+ticrate = vzd.DEFAULT_TICRATE#2 * vzd.DEFAULT_TICRATE  # for Mode.ASYNC_PLAYER
 random_sleep = True
 const_sleep_time = 0.005
-window = True
-resolution = vzd.ScreenResolution.RES_320X240
+window = False
+# resolution = vzd.ScreenResolution.RES_320X240
 
 args = ""
 console = False
-config = os.path.join(vzd.scenarios_path, "cig.cfg")
+config = os.path.join(vzd.scenarios_path, "multi.cfg")
 
 
 def setup_player():
     game = vzd.DoomGame()
 
     game.load_config(config)
-    game.set_mode(mode)
+    game.set_doom_map("map04")
+
+    # game.set_mode(mode)
     game.add_game_args(args)
-    game.set_screen_resolution(resolution)
+    # game.set_screen_resolution(resolution)
     game.set_console_enabled(console)
-    game.set_window_visible(window)
+    # game.set_window_visible(window)
     game.set_ticrate(ticrate)
 
-    actions = [
-        [1, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0, 0, 0, 0],
-    ]
+    # actions = [
+    #     [1, 0, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 1, 0, 0, 0, 0, 0, 0, 0],
+    #     [0, 0, 1, 0, 0, 0, 0, 0, 0],
+    # ]
+    actions = [list(a) for a in it.product([0, 1], repeat=game.get_available_buttons_size())]
 
     return game, actions
 
@@ -57,11 +60,23 @@ def player_action(game, player_sleep_time, actions, player_skip):
     elif player_sleep_time > 0:
         sleep(player_sleep_time)
 
+
     game.make_action(choice(actions), player_skip)
 
     if game.is_player_dead():
         game.respawn_player()
 
+def player_action_chose(game, player_sleep_time, action, player_skip):
+    if random_sleep:
+        sleep(random() * 0.005 + 0.001)
+    elif player_sleep_time > 0:
+        sleep(player_sleep_time)
+
+
+    game.make_action(action, player_skip)
+
+    if game.is_player_dead():
+        game.respawn_player()
 
 def player_host(p):
     game, actions = setup_player()
@@ -89,7 +104,7 @@ def player_host(p):
                 episode_start_time = time()
 
             state = game.get_state()
-            print("Player0:", state.number, action_count, game.get_episode_time())
+            # print("Player0:", state.number, action_count, game.get_episode_time())
 
             player_action(game, player_sleep_time, actions, player_skip)
             action_count += 1
@@ -117,26 +132,45 @@ def player_join(p):
     game, actions = setup_player()
     game.add_game_args("-join 127.0.0.1 +name Player" + str(p) + " +colorset " + str(p))
     game.add_game_args(args)
-
+    agent = DQNAgent()
+    replay_memory = deque(maxlen=replay_memory_size)
     game.init()
 
     action_count = 0
     player_sleep_time = const_sleep_time
     player_skip = skip
 
+
     for i in range(episodes):
 
+
         while not game.is_episode_finished():
-            state = game.get_state()
+            with tf.device(DEVICE):
+
+                if not skip_learning:
+                    print("Starting the training!")
+
+                    run(agent, game, replay_memory, actions)
+
+                    # game.close()
+                    print("======================================")
+                    print("Training is finished.")
+
+                    if save_model:
+                        agent.dqn.save(model_savefolder)
+
+            state = preprocess(game.get_state().screen_buffer)
+            best_action_index = agent.choose_action(state)
             print(
                 "Player" + str(p) + ":",
                 state.number,
                 action_count,
                 game.get_episode_time(),
             )
-            player_action(game, player_sleep_time, actions, player_skip)
+            player_action_chose(game, player_sleep_time, best_action_index, player_skip)
             action_count += 1
-
+            # for _ in range(frames_per_action):
+            #     game.advance_action()
         print(
             "Player" + str(p) + " frags:",
             game.get_game_variable(vzd.GameVariable.FRAGCOUNT),

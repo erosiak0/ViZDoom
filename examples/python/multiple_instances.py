@@ -10,7 +10,7 @@ import vizdoom as vzd
 
 # Run this many episodes
 episodes = 1
-config = os.path.join(vzd.scenarios_path, "multi_duel.cfg")
+config = os.path.join(vzd.scenarios_path, "multi.cfg")
 
 
 def player1():

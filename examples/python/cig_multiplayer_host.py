@@ -6,21 +6,22 @@
 
 import os
 from random import choice
+import itertools as it
 
 import vizdoom as vzd
 
-
+frames_per_action = 12
 game = vzd.DoomGame()
 
 # Use CIG example config or your own.
-game.load_config(os.path.join(vzd.scenarios_path, "cig.cfg"))
+game.load_config(os.path.join(vzd.scenarios_path, "multi.cfg"))
 
-game.set_doom_map("map01")  # Limited deathmatch.
+game.set_doom_map("map04")  # Limited deathmatch.
 # game.set_doom_map("map02")  # Full deathmatch.
 
 # Host game with options that will be used in the competition.
 game.add_game_args(
-    "-host 2 "
+    "-host 3 "
     # This machine will function as a host for a multiplayer game with this many players (including this machine).
     # It will wait for other machines to connect using the -join parameter and then start the game when everyone is connected.
     "-port 5029 "  # Specifies the port (default is 5029).
@@ -42,22 +43,19 @@ game.add_game_args(
 # Name your agent and select color
 # colors: 0 - green, 1 - gray, 2 - brown, 3 - red, 4 - light gray, 5 - light brown, 6 - light red, 7 - light blue
 game.add_game_args("+name Host +colorset 0")
-
+game.set_window_visible(True)
 # During the competition, async mode will be forced for all agents.
 # game.set_mode(vzd.Mode.PLAYER)
-game.set_mode(vzd.Mode.ASYNC_PLAYER)
+# game.set_mode(vzd.Mode.ASYNC_PLAYER)
 
-# game.set_window_visible(False)
 
 game.init()
 
 # Three example sample actions
-actions = [
-    [1, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 1, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 1, 0, 0, 0, 0, 0, 0],
-]
-
+n = game.get_available_buttons_size()
+actions = [list(a) for a in it.product([0, 1], repeat=n)]
+player_number = int(game.get_game_variable(vzd.GameVariable.PLAYER_NUMBER))
+last_frags = 0
 # Play until the game (episode) is over.
 while not game.is_episode_finished():
 
@@ -67,8 +65,11 @@ while not game.is_episode_finished():
     # Analyze the state.
 
     # Make your action.
-    game.make_action(choice(actions))
-
+    game.make_action(choice(actions), frames_per_action)
+    frags = game.get_game_variable(vzd.GameVariable.FRAGCOUNT)
+    if frags != last_frags:
+        last_frags = frags
+        print("Player " + str(player_number) + " has " + str(frags) + " frags.")
     # Check if player is dead
     if game.is_player_dead():
         # Use this to respawn immediately after death, new state will be available.
