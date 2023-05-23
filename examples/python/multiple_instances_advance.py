@@ -36,12 +36,13 @@ def setup_player():
 
     game.load_config(config)
     game.set_doom_map("map04")
-
+    game.set_screen_format(vzd.ScreenFormat.GRAY8)
+    game.set_mode(vzd.Mode.PLAYER)
     # game.set_mode(mode)
     game.add_game_args(args)
     # game.set_screen_resolution(resolution)
     game.set_console_enabled(console)
-    # game.set_window_visible(window)
+    game.set_window_visible(False)
     game.set_ticrate(ticrate)
 
     # actions = [
@@ -127,7 +128,6 @@ def player_host(p):
 
     game.close()
 
-
 def player_join(p):
     game, actions = setup_player()
     game.add_game_args("-join 127.0.0.1 +name Player" + str(p) + " +colorset " + str(p))
@@ -142,8 +142,7 @@ def player_join(p):
 
 
     for i in range(episodes):
-
-
+        print(f"Episode #  {i + 1} Player {p}")
         while not game.is_episode_finished():
             with tf.device(DEVICE):
 

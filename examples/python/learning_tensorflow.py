@@ -28,15 +28,15 @@ tf.executing_eagerly()
 learning_rate = 0.00025
 discount_factor = 0.99
 replay_memory_size = 10000
-num_train_epochs = 1
-learning_steps_per_epoch = 2000
-target_net_update_steps = 1000
+num_train_epochs = 2
+learning_steps_per_epoch = 10
+target_net_update_steps = 5
 
 # NN learning settings
-batch_size = 32
+batch_size = 8
 
 # Training regime
-test_episodes_per_epoch = 100
+test_episodes_per_epoch = 2
 
 # Other parameters
 frames_per_action = 12
@@ -84,9 +84,9 @@ def initialize_game():
     print("Initializing doom...")
     game = vzd.DoomGame()
     game.load_config(config_file_path)
-    # game.set_doom_map("map04")
-    # game.set_window_visible(False)
-    # game.set_mode(vzd.Mode.PLAYER)
+    game.set_doom_map("map04")
+    game.set_window_visible(False)
+    game.set_mode(vzd.Mode.PLAYER)
     game.set_screen_format(vzd.ScreenFormat.GRAY8)
     # game.set_screen_resolution(vzd.ScreenResolution.RES_640X480)
     game.add_game_args("-join 127.0.0.1 -port 5029") 
@@ -135,14 +135,14 @@ class DQNAgent:
 
         with tf.GradientTape() as tape:
             tape.watch(self.dqn.trainable_variables)
-            print(f"screen_buf: {screen_buf.shape}")
+            # print(f"screen_buf: {screen_buf.shape}")
 
             Q_prev = tf.gather_nd(self.dqn(screen_buf), ids)
 
             Q_next = self.target_net(next_screen_buf)
             Q_next = tf.gather_nd(
                 Q_next,
-                extractDigits(row_ids, tf.argmax(agent.dqn(next_screen_buf), axis=1)),
+                extractDigits(row_ids, tf.argmax(self.dqn(next_screen_buf), axis=1)),
             )
 
             q_target = rewards + self.discount_factor * Q_next
@@ -194,7 +194,7 @@ def run(agent, game, replay_memory, actions = None):
     time_start = time()
 
     for episode in range(num_train_epochs):
-        train_scores = []
+        train_scores = [0]
         print("\nEpoch %d\n-------" % (episode + 1))
 
         # game.new_episode()
@@ -226,6 +226,7 @@ def run(agent, game, replay_memory, actions = None):
                 agent.update_target_net()
 
         train_scores = np.array(train_scores)
+        print(f"train_scores: {train_scores}")
         print(
             "Results: mean: {:.1f}±{:.1f},".format(
                 train_scores.mean(), train_scores.std()
@@ -234,16 +235,16 @@ def run(agent, game, replay_memory, actions = None):
             "max: %.1f," % train_scores.max(),
         )
 
-        test(test_episodes_per_epoch, game, agent)
+        test(test_episodes_per_epoch, game, agent, actions)
         print("Total elapsed time: %.2f minutes" % ((time() - time_start) / 60.0))
 
 
-def test(test_episodes_per_epoch, game, agent):
+def test(test_episodes_per_epoch, game, agent, actions):
     test_scores = []
 
     print("\nTesting...")
     for test_episode in trange(test_episodes_per_epoch, leave=False):
-        game.new_episode()
+        # game.new_episode()
         while not game.is_episode_finished():
             state = preprocess(game.get_state().screen_buffer)
             best_action_index = agent.choose_action(state)
