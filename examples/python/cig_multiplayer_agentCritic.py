@@ -9,7 +9,7 @@ import itertools as it
 from collections import deque
 import os
 from random import choice
-from qLearning import *
+from agentCritic import *
 import vizdoom as vzd
 
 
@@ -28,7 +28,7 @@ game.add_game_args(
 
 # Name your agent and select color
 # colors: 0 - green, 1 - gray, 2 - brown, 3 - red, 4 - light gray, 5 - light brown, 6 - light red, 7 - light blue
-game.add_game_args("+name AI +colorset 0")
+game.add_game_args("+name ActorCritic +colorset 1")
 # game.set_screen_format(vzd.ScreenFormat.GRAY8)
 # game.set_screen_resolution(vzd.ScreenResolution.RES_640X480)
 # During the competition, async mode will be forced for all agents.
@@ -42,9 +42,9 @@ game.init()
 replay_memory = deque(maxlen=replay_memory_size)
 
 # Three example sample actions
-n = game.get_available_buttons_size() 
+n = game.get_available_buttons_size()
 actions = [list(a) for a in it.product([0, 1], repeat=n)]
-agent = DQNAgent(num_actions=n)
+agent = AgentCritic(num_actions=n)
 
 # Get player's number
 player_number = int(game.get_game_variable(vzd.GameVariable.PLAYER_NUMBER))
@@ -53,35 +53,24 @@ summary = []
 summary_rewards = []
 # Play until the game (episode) is over.
 for episode in range(episodes):
-    
     game.new_episode()
 
     train_scores = []
-    rewards = []
     counter = 0
-    print(f"Episode #  {episode + 1} Player 1")
-    # game.send_game_command('addbot')
-
+    print(f"Episode #  {episode + 1} Player "+ str(player_number))
     time_start = time()
+    rewards = []
     while not game.is_episode_finished():
         counter += 1
-
         # Get the state.
         s = game.get_state()
 
         # Analyze the state.
-        replay_memory, train_scores, action, reward = run(agent, game, replay_memory, actions, train_scores)
+        train_scores, action, reward = run(agent, game, actions, train_scores)
         rewards.append(reward)
-        if len(replay_memory) > batch_size:
-            agent.train_dqn(get_samples(replay_memory))
-
-        if len(replay_memory)%target_net_update_steps == 0:
-            agent.update_target_net()
-
         # Make your action.
 
         game.make_action(actions[action], player_skip)
-
         frags = game.get_game_variable(vzd.GameVariable.FRAGCOUNT)
         if frags != last_frags:
             last_frags = frags
@@ -96,8 +85,14 @@ for episode in range(episodes):
     train_scores = np.array(train_scores)
     if save_model:
         print("save model")
-        agent.dqn.save(model_savefolder)
-        # agent.dqn.save_weights(model_savefolder.format(epoch=episode))
+        # agent.actor.save_weights(model_savefolder_actor.format(epoch=episode))
+        # agent.critic.save_weights(model_savefolder_critic.format(epoch=episode))
+        agent.actor.save(model_savefolder_actor)
+        agent.critic.save(model_savefolder_critic)
+    print(
+        "Player "+ str(player_number) +" frags:",
+        game.get_game_variable(vzd.GameVariable.FRAGCOUNT),
+    )
 
     try:
         print(
@@ -106,9 +101,11 @@ for episode in range(episodes):
         ),
         "min: %.1f," % train_scores.min(),
         "max: %.1f," % train_scores.max(),
+        
         )
     except:
         print("Empty train_scores")
+
     try:
         print(
         "Results: mean: {:.1f}±{:.1f},".format(
@@ -119,16 +116,15 @@ for episode in range(episodes):
         )
     except:
         print("Empty rewards")
-    print(f"counter: {counter}","Total elapsed time: %.2f minutes" % ((time() - time_start) / 60.0))
 
+    print(f"counter: {counter}","Total elapsed time: %.2f minutes" % ((time() - time_start) / 60.0))
     # game.new_episode()
     
     summary.append(train_scores)
     summary_rewards.append(rewards)
     game.respawn_player()
-
 print(summary)
 print(summary_rewards)
 # with open("F:/SIiUM3/ViZDoom/log/train001_"+ str(player_number), 'w') as f:
-#     f.write(summary)
+#     f.write()
 game.close()
