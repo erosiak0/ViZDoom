@@ -44,7 +44,7 @@ replay_memory = deque(maxlen=replay_memory_size)
 # Three example sample actions
 n = game.get_available_buttons_size() 
 actions = [list(a) for a in it.product([0, 1], repeat=n)]
-agent = DQNAgent(num_actions=n)
+agent = DQNAgent(num_actions=len(actions))
 
 # Get player's number
 player_number = int(game.get_game_variable(vzd.GameVariable.PLAYER_NUMBER))
