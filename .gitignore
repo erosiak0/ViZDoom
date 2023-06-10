@@ -4,3 +4,5 @@
 *.index
 *.pb
 *.pb
+*.pyc
+*.pickle
