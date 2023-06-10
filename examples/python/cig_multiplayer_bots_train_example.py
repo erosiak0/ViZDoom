@@ -10,7 +10,7 @@ import time
 # from agent_example import Agent
 import vizdoom as vzd
 # from agentCritic1 import *
-from agentCritic2 import *
+from agentCritic3 import *
 
 game = vzd.DoomGame()
 # Use CIG example config or your own.
@@ -43,6 +43,7 @@ game.add_game_args("+viz_bots_path F:/SIiUM3/ViZDoom/scenarios/bots.cfg")
 # Name your agent and select color
 # colors: 0 - green, 1 - gray, 2 - brown, 3 - red, 4 - light gray, 5 - light brown, 6 - light red, 7 - light blue
 game.add_game_args("+name AI +colorset 3")
+game.set_doom_map("map03")  # Limited deathmatch.
 
 ### Change game mode 
 game.set_mode(vzd.Mode.ASYNC_PLAYER)
@@ -55,18 +56,47 @@ game.set_ticrate(35)
 game.init()
 
 # Three example sample actions
-n = game.get_available_buttons_size() -2
-actions = [list(a) for a in it.product([0, 1], repeat=n)]
-# actions = [
-#     [1, 0, 0, 0, 0, 0, 0, 0, 0],
-#     [0, 1, 0, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 1, 0, 0, 0, 0, 0, 0],
-#     [0, 0, 0, 1, 0, 0, 0, 0, 0],
-#     [0, 0, 0, 0, 1, 0, 0, 0, 0],
-#     [0, 0, 0, 0, 0, 1, 0, 0, 0],
-#     [0, 0, 0, 0, 0, 0, 1, 0, 0],
 
-# ]
+actions = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 1, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, 0, 0],
+    [1, 0, 1, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 1, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 1, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0],
+    [1, 0, 0, 0, 0, 0, 1, 0, 0],
+    [0, 1, 0, 1, 0, 0, 0, 0, 0],
+    [0, 1, 0, 0, 1, 0, 0, 0, 0],
+    [0, 1, 0, 0, 0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0, 0, 1, 0, 0],
+    [0, 0, 0, 1, 0, 1, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 1, 0, 0],
+    [0, 0, 0, 0, 1, 1, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0, 1, 0, 0],
+    [1, 0, 1, 1, 0, 0, 0, 0, 0],
+    [1, 0, 1, 0, 1, 0, 0, 0, 0],
+    [1, 0, 1, 0, 0, 1, 0, 0, 0],
+    [1, 0, 1, 0, 0, 0, 1, 0, 0],
+    [0, 1, 1, 1, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 1, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 1, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 1, 0, 0],
+    [0, 0, 1, 1, 0, 1, 0, 0, 0],
+    [0, 0, 1, 1, 0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 1, 1, 0, 0, 0],
+    [0, 0, 1, 0, 1, 0, 1, 0, 0],    
+]
 last_frags = 0
 
 # Play with this many bots
@@ -82,124 +112,104 @@ replay_memory = deque(maxlen=replay_memory_size)
 
 summary = []
 summary_rewards = []
+summary_frags = []
 framebuffer = np.zeros(resolution_buffer, 'float32')
 framebuffer_next = np.zeros(resolution_buffer, 'float32')
-filepath = 'F:/SIiUM3/ViZDoom/buffer/framebuffer_agent2.pickle'
+
 try:
-    replay_memory = load_pickle('F:/SIiUM3/ViZDoom/buffer/framebuffer1.pickle')
+    replay_memory = load_pickle('F:/SIiUM3/ViZDoom/buffer/framebuffer_agent3_map03.pickle')
 except:
     print("pickle file not exist or is empty")
 
-# replay_memory = load_json(filepath)
-
 iteration = 0
-with open(filepath, "ab") as file:
-    for i in range(episodes):
-        agent.episode += 1
-        print("Episode #" + str(i + 1))
-        train_scores = []
-        rewards = 0
-        ### Add specific number of bots
-        # edit this file to adjust bots).
-        game.send_game_command("removebots")
-        for i in range(bots):
-            game.send_game_command("addbot")
+for i in range(episodes):
+    agent.episode += 1
+    print("Episode #" + str(i + 1) + " ::" +str(agent.episode))
+    train_scores = []
+    rewards = 0
+    ### Add specific number of bots
+    # edit this file to adjust bots).
+    game.send_game_command("removebots")
+    for i in range(bots):
+        game.send_game_command("addbot")
 
-        ### Change the bots difficulty
-        # Valid args: 1, 2, 3, 4, 5 (1 - easy, 5 - very hard)
-        game.send_game_command("pukename change_difficulty 5")
+    ### Change the bots difficulty
+    # Valid args: 1, 2, 3, 4, 5 (1 - easy, 5 - very hard)
+    game.send_game_command("pukename change_difficulty 5")
 
-        ### Change number of monster to spawn 
-        # Valid args: >= 0
-        # game.send_game_command(f"pukename change_num_of_monster_to_spawn 0")
+    ### Change number of monster to spawn 
+    # Valid args: >= 0
+    # game.send_game_command(f"pukename change_num_of_monster_to_spawn 0")
 
-        # Play until the game (episode) is over.
-        while not game.is_episode_finished():
+    # Play until the game (episode) is over.
+    while not game.is_episode_finished():
 
-            iteration += 1
-            # Get the state.
-            state = game.get_state()
+        iteration += 1
+        # Get the state.
+        state = game.get_state()
 
-            screen_buf = preprocess(state.screen_buffer)
-            framebuffer = update_buffer(screen_buf, framebuffer[:,:-90])
-            action = agent.choose_action(framebuffer)
-            game_variables = state.game_variables
-            action_reward = game.make_action(actions[action], frames_per_action)
+        screen_buf = preprocess(state.screen_buffer)
+        framebuffer = update_buffer(screen_buf, framebuffer[:,:-90])
+        action = agent.choose_action(framebuffer)
+        game_variables = state.game_variables
+        action_reward = game.make_action(actions[action], frames_per_action)
 
-            if game.is_episode_finished():
-                break
+        if game.is_episode_finished():
+            break
 
-            next_state = game.get_state()
-            game_variables_next = next_state.game_variables
-            reward = get_reward(action_reward, game_variables, game_variables_next)
-            next_screen_buf = preprocess(next_state.screen_buffer)
-            framebuffer_next = update_buffer(next_screen_buf, framebuffer_next[:,:-90])
+        next_state = game.get_state()
+        game_variables_next = next_state.game_variables
+        reward = get_reward(action_reward, game_variables, game_variables_next)
+        next_screen_buf = preprocess(next_state.screen_buffer)
+        framebuffer_next = update_buffer(next_screen_buf, framebuffer_next[:,:-90])
+        if i > 4:
             replay_memory.append((framebuffer, action, reward, framebuffer_next, 0))
 
+        ### TRAIN YOUR AGENT HERE
+        if len(replay_memory) >= batch_size:    
+            screen_buf, act, rewa, next_screen_buf, dones = split_tuple(get_samples(replay_memory))
 
-            # saved_memory = {
-            # "framebuffer":framebuffer.tolist(),
-            # "action":action, #.tolist(),
-            # "reward":reward,
-            # "framebuffer_next":framebuffer_next.tolist()
-            # }
-            # pickle.dump([saved_memory], file)
+            agent.train(screen_buf, act, rewa, next_screen_buf, dones)
 
-            ### TRAIN YOUR AGENT HERE
-            if len(replay_memory) >= batch_size:    
-                screen_buf, act, rewa, next_screen_buf, dones = split_tuple(get_samples(replay_memory))
+        rewards += reward
 
-                agent.train(screen_buf, act, rewa, next_screen_buf, dones)
+        # Check if player is dead
+        if game.is_player_dead():
+            train_scores.append(game.get_total_reward())
 
-            rewards += reward
+            print("Player died.")
+            # Use this to respawn immediately after death, new state will be available.
+            game.respawn_player()
 
-            # Check if player is dead
-            if game.is_player_dead():
-                train_scores.append(game.get_total_reward())
-
-                print("Player died.")
-                # Use this to respawn immediately after death, new state will be available.
-                game.respawn_player()
+    print(f"Results: {rewards}")
 
 
-        try:
+
+    print("Episode finished.")
+    print("************************")
+    if save_model:
+        print("save model")
+        agent.actor.save(f"F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/actor{agent.episode}")
+        agent.critic.save(f"F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/critic{agent.episode}")
+
+    print("Results:")
+    server_state = game.get_server_state()
+    for i in range(len(server_state.players_in_game)):
+        if server_state.players_in_game[i]:
             print(
-            "Results: mean: {:.1f}±{:.1f},".format(
-                train_scores.mean(), train_scores.std()
-            ),
-            "min: %.1f," % train_scores.min(),
-            "max: %.1f," % train_scores.max(),
-            
+                server_state.players_names[i]
+                + ": "
+                + str(server_state.players_frags[i])
             )
-        except:
-            print("Empty train_scores")
+    print("************************")
 
-        print(f"Results: {rewards}")
+    # Starts a new episode. All players have to call new_episode() in multiplayer mode.
+    game.new_episode()
+    summary.append(train_scores)
+    summary_rewards.append(rewards)
+    summary_frags.append(server_state.players_frags)
+    np.save("F:\\SIiUM3\\ViZDoom\\log\\rewards_summary.npy", np.array(summary_rewards))
+    np.save("F:\\SIiUM3\\ViZDoom\\log\\summary_frags.npy", np.array(summary_frags))
 
-
-
-        print("Episode finished.")
-        print("************************")
-        if save_model:
-            print("save model")
-            agent.actor.save(f"F:/SIiUM3/ViZDoom/model_actor2_all/model_backup/actor{agent.episode}")
-            agent.critic.save(f"F:/SIiUM3/ViZDoom/model_actor2_all/model_backup/critic{agent.episode}")
-
-        print("Results:")
-        server_state = game.get_server_state()
-        for i in range(len(server_state.players_in_game)):
-            if server_state.players_in_game[i]:
-                print(
-                    server_state.players_names[i]
-                    + ": "
-                    + str(server_state.players_frags[i])
-                )
-        print("************************")
-
-        # Starts a new episode. All players have to call new_episode() in multiplayer mode.
-        game.new_episode()
-        summary.append(train_scores)
-        summary_rewards.append(rewards)
-    
 game.close()
 

@@ -9,7 +9,7 @@ from random import choice
 import time
 # from agent_example import Agent
 import vizdoom as vzd
-from agentCritic1 import *
+from agentCritic3 import *
 
 game = vzd.DoomGame()
 # Use CIG example config or your own.
@@ -25,7 +25,7 @@ game.add_game_args(
     # "-port 5029 "  # Specifies the port (default is 5029).
     # "+viz_connect_timeout 60 "  # Specifies the time (in seconds), that the host will wait for other players (default is 60).
     "-deathmatch "  # Deathmatch rules are used for the game.
-    "+timelimit 1.0 "  # The game (episode) will end after this many minutes have elapsed.
+    "+timelimit 3.0 "  # The game (episode) will end after this many minutes have elapsed.
     "+sv_forcerespawn 1 "  # Players will respawn automatically after they die.
     "+sv_noautoaim 1 "  # Autoaim is disabled for all players.
     "+sv_respawnprotect 1 "  # Players will be invulnerable for two second after spawning.
@@ -34,6 +34,7 @@ game.add_game_args(
     "+viz_respawn_delay 0 "  # Sets delay between respawns (in seconds, default is 0).
     "+viz_nocheat 1"
 )
+game.set_doom_map("map03")  # Limited deathmatch.
 
 # Bots are loaded from file, that by default is bots.cfg located in the same dir as ViZDoom exe
 # Other location of bots configuration can be specified by passing this argument
@@ -55,8 +56,8 @@ game.set_ticrate(35)
 game.init()
 
 # Three example sample actions
-n = game.get_available_buttons_size() -2
-actions = [list([*a, 0,0]) for a in it.product([0, 1], repeat=n)]
+# n = game.get_available_buttons_size() -2
+# actions = [list([*a, 0,0]) for a in it.product([0, 1], repeat=n)]
 
 dict_actions = {}
 for i, a in enumerate(actions):
@@ -64,10 +65,10 @@ for i, a in enumerate(actions):
 last_frags = 0
 
 # Play with this many bots
-bots = 5
+bots = 10
 
 # Run this many episodes
-episodes = 5 # 25_000
+episodes = 3 # 25_000
 
 ### DEFINE YOUR AGENT HERE (or init)
 
@@ -76,14 +77,8 @@ replay_memory = deque(maxlen=replay_memory_size)
 
 framebuffer = np.zeros(resolution_buffer, 'float32')
 framebuffer_next = np.zeros(resolution_buffer, 'float32')
-filepath = 'F:/SIiUM3/ViZDoom/buffer/framebuffer_action.pickle'
-# try:
-#     replay_memory = load_json(filepath)
-# except:
-#     print("json file not exist or is empty")
-
-# replay_memory = load_json(filepath)
-
+filepath = 'F:/SIiUM3/ViZDoom/buffer/framebuffer_agent3_map03.pickle'
+print((vzd.scenarios_path))
 with open(filepath, "wb") as file:
             
 
@@ -97,8 +92,7 @@ with open(filepath, "wb") as file:
         for i in range(bots):
             game.send_game_command("addbot")
 
-
-        game.send_game_command("pukename change_difficulty 5")
+        game.send_game_command("pukename change_difficulty 3")
 
         while not game.is_episode_finished():
 
@@ -124,10 +118,10 @@ with open(filepath, "wb") as file:
             framebuffer_next = update_buffer(next_screen_buf, framebuffer_next[:,:-90])
             replay_memory.append((framebuffer, action, reward, framebuffer_next, 0))
 
-            if action != []:
+            if action != [] and action != 0:
                 saved_memory = {
                 "framebuffer":framebuffer.tolist(),
-                "action":action, #.tolist(),
+                "action":action, 
                 "reward":reward,
                 "framebuffer_next":framebuffer_next.tolist()
                 }
@@ -140,12 +134,7 @@ with open(filepath, "wb") as file:
                 # Use this to respawn immediately after death, new state will be available.
                 game.respawn_player()
 
-
-
         game.new_episode()
-
-# for framebuffer, action, reward, framebuffer_next, done in replay_memory:
-#     save_memory2file('F:/SIiUM3/ViZDoom/buffer/framebuffer_spectator.json', framebuffer, action, reward, framebuffer_next, 0)
 
 game.close()
 

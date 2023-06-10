@@ -26,34 +26,64 @@ tf.compat.v1.enable_eager_execution()
 tf.executing_eagerly()
 
 # Q-learning settings
-episodes = 5
 learning_rate_actor = 0.000001
 learning_rate_critic = 0.000005
 
 gamma = 0.90
-replay_memory_size = 100000
+replay_memory_size = 1000000
 num_train_epochs = 5
-learning_steps_per_epoch = 200
-target_net_update_steps = 100
-batch_size = 128
-# Training regime
-test_episodes_per_epoch = 10
+batch_size = 256
 
 # Other parameters
 frames_per_action = 1
 resolution = (120, 90)
 resolution_buffer = (120, 90*3)
 
-episodes_to_watch = 20
-
 save_model = True
-load = True
-skip_learning = False
-watch = False
+load = False
 player_skip = frames_per_action
 # Configuration file path
 
-
+actions = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 1, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, 0, 0],
+    [1, 0, 1, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 1, 0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 1, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 1, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0, 0, 0, 0, 0],
+    [1, 0, 0, 0, 1, 0, 0, 0, 0],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0],
+    [1, 0, 0, 0, 0, 0, 1, 0, 0],
+    [0, 1, 0, 1, 0, 0, 0, 0, 0],
+    [0, 1, 0, 0, 1, 0, 0, 0, 0],
+    [0, 1, 0, 0, 0, 1, 0, 0, 0],
+    [0, 1, 0, 0, 0, 0, 1, 0, 0],
+    [0, 0, 0, 1, 0, 1, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 1, 0, 0],
+    [0, 0, 0, 0, 1, 1, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0, 1, 0, 0],
+    [1, 0, 1, 1, 0, 0, 0, 0, 0],
+    [1, 0, 1, 0, 1, 0, 0, 0, 0],
+    [1, 0, 1, 0, 0, 1, 0, 0, 0],
+    [1, 0, 1, 0, 0, 0, 1, 0, 0],
+    [0, 1, 1, 1, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 1, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 1, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 1, 0, 0],
+    [0, 0, 1, 1, 0, 1, 0, 0, 0],
+    [0, 0, 1, 1, 0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 1, 1, 0, 0, 0],
+    [0, 0, 1, 0, 1, 0, 1, 0, 0],    
+]
 
 if len(tf.config.experimental.list_physical_devices("GPU")) > 0:
     print("GPU available")
@@ -85,7 +115,7 @@ class AgentCriticActor(Model):
 
         self.conv2 = Sequential(
             [
-                Conv2D(12, kernel_size=3, strides=2, input_shape=(59, 134, 8)),
+                Conv2D(12, kernel_size=3, strides=1, input_shape=(59, 134, 8)),
                 BatchNormalization(),
                 ReLU(),
             ]
@@ -93,7 +123,7 @@ class AgentCriticActor(Model):
 
         self.conv3 = Sequential(
             [
-                Conv2D(16, kernel_size=3, strides=2, input_shape=(29, 66, 12)),
+                Conv2D(20, kernel_size=3, strides=1, input_shape=(57, 132, 12)),
                 BatchNormalization(),
                 ReLU(),
             ]
@@ -101,18 +131,29 @@ class AgentCriticActor(Model):
 
         self.conv4 = Sequential(
             [
-                Conv2D(24, kernel_size=3, strides=2, input_shape=(14, 32, 16)),
+                Conv2D(28, kernel_size=3, strides=2, input_shape=(55, 130, 20)),
+                BatchNormalization(),
+                ReLU(),
+            ]
+        )
+
+        self.conv5 = Sequential(
+            [
+                Conv2D(36, kernel_size=3, strides=2, input_shape=(27, 64, 28)),
+                BatchNormalization(),
+                ReLU(),
+            ]
+        )
+
+        self.conv6 = Sequential(
+            [
+                Conv2D(48, kernel_size=3, strides=2, input_shape=(13, 31, 36)),
                 BatchNormalization(),
                 ReLU(),
             ]
         )
 
         self.flatten = Flatten()
-        # self.dense1 = Sequential([
-        #         Dense(128),
-        #         BatchNormalization(),
-        #         ReLU(),
-        # ])
         self.advantage = Dense(num_actions, activation = 'softmax')
 
     def call(self, x):
@@ -120,8 +161,9 @@ class AgentCriticActor(Model):
         x1 = self.conv2(x1)
         x1 = self.conv3(x1)
         x1 = self.conv4(x1)
+        x1 = self.conv5(x1)
+        x1 = self.conv6(x1)
         x = self.flatten(x1)
-        # x = self.dense1(x)
         x = self.advantage(x)
 
         return x
@@ -131,7 +173,7 @@ class AgentCriticCritic(Model):
         super().__init__()
         self.conv1 = Sequential(
             [
-                Conv2D(8, kernel_size=3, strides=3, input_shape=(120, 270, 1)),
+                Conv2D(8, kernel_size=3, strides=2, input_shape=(120, 270, 1)),
                 BatchNormalization(),
                 ReLU(),
             ]
@@ -139,7 +181,7 @@ class AgentCriticCritic(Model):
 
         self.conv2 = Sequential(
             [
-                Conv2D(12, kernel_size=3, strides=3, input_shape=(40, 90, 8)),
+                Conv2D(12, kernel_size=3, strides=1, input_shape=(59, 134, 8)),
                 BatchNormalization(),
                 ReLU(),
             ]
@@ -147,27 +189,39 @@ class AgentCriticCritic(Model):
 
         self.conv3 = Sequential(
             [
-                Conv2D(16, kernel_size=3, strides=3, input_shape=(13, 30, 12)),
+                Conv2D(16, kernel_size=3, strides=2, input_shape=(57, 132, 12)),
+                BatchNormalization(),
+                ReLU(),
+            ]
+        )
+
+        self.conv4 = Sequential(
+            [
+                Conv2D(24, kernel_size=3, strides=2, input_shape=(28, 65, 16)),
+                BatchNormalization(),
+                ReLU(),
+            ]
+        )
+
+        self.conv5 = Sequential(
+            [
+                Conv2D(36, kernel_size=3, strides=2, input_shape=(13, 32, 24)),
                 BatchNormalization(),
                 ReLU(),
             ]
         )
 
         self.flatten = Flatten()
-        # self.dense1 = Sequential([
-        #         Dense(32),
-        #         BatchNormalization(),
-        #         ReLU(),
-        # ])
         self.state_value = Dense(1)
 
     def call(self, x):
         x1 = self.conv1(x)
         x1 = self.conv2(x1)
         x1 = self.conv3(x1)
-    
+        x1 = self.conv4(x1)
+        x1 = self.conv5(x1)
+
         x = self.flatten(x1)
-        # x = self.dense1(x)
         x = self.state_value(x)
 
         return x
@@ -179,19 +233,19 @@ class AgentCritic:
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
-        self.episode = 8
+        self.episode = 0
 
-        self.model_savefolder_actor = f"F:/SIiUM3/ViZDoom/model_actor2_a37/model_backup/actor{self.episode}"
-        self.model_savefolder_critic = f"F:/SIiUM3/ViZDoom/model_actor2_a37/model_backup/critic{self.episode}"
+        self.model_savefolder_actor = f"F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/actor{self.episode}"
+        self.model_savefolder_critic = f"F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/critic{self.episode}"
 
-        self.model_savefolder_actor_backup = f"F:/SIiUM3/ViZDoom/model_actor2_a37/model_backup/actor{self.episode-2}"
-        self.model_savefolder_critic_backup = f"F:/SIiUM3/ViZDoom/model_actor2_a37/model_backup/critic{self.episode-2}"
+        self.model_savefolder_actor_backup = f"F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/actor{self.episode-2}"
+        self.model_savefolder_critic_backup = f"F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/critic{self.episode-2}"
 
         if load:
             print("Loading model actor from: ", self.model_savefolder_actor, 
                   "\n Loading model critic from: ",self.model_savefolder_critic)
-            self.actor = tf.keras.models.load_model("F:/SIiUM3/ViZDoom/model_actor2_a37/model_backup/actor2",  compile=False)
-            self.critic = tf.keras.models.load_model("F:/SIiUM3/ViZDoom/model_actor2_a37/model_backup/critic2",  compile=False)
+            self.actor = tf.keras.models.load_model("F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/actor2",  compile=False)
+            self.critic = tf.keras.models.load_model("F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/critic2",  compile=False)
 
         else:
             self.actor = AgentCriticActor(self.num_actions)
@@ -199,11 +253,6 @@ class AgentCritic:
 
         self.actor.compile(loss = 'mse', optimizer = Adam(learning_rate_actor),  metrics=['accuracy'])
         self.critic.compile(loss = 'mse', optimizer = Adam(learning_rate_critic), metrics=['accuracy'])
-
-
-
-        # self.actor.optimizer = Adam(learning_rate =0.00001)
-        # self.critic.optimizer = Adam(learning_rate =0.00005)
 
     def choose_action(self, state, variables = None):
         """
@@ -214,29 +263,29 @@ class AgentCritic:
         # state = tf.convert_to_tensor([state], dtype=tf.float32)
         state = np.array([state], dtype=np.float32)
 
-        # if self.epsilon < np.random.uniform(0, 1):
-        action_probability = self.actor.predict(state, verbose = 0)
-    
-        # print(f"action_probability: {action_probability}")
-        ids = np.arange(len(action_probability[0]))
-        try:
-            chosen_action = np.random.choice(ids, p = action_probability[0])
-        except:
-            print("nan in action_probability. Load last checkpoint")
+        if self.epsilon < np.random.uniform(0, 1):
+            action_probability = self.actor.predict(state, verbose = 0)
+        
+            # print(f"action_probability: {action_probability}")
+            ids = np.arange(len(action_probability[0]))
+            try:
+                chosen_action = np.random.choice(ids, p = action_probability[0])
+            except:
+                print("nan in action_probability. Load last checkpoint")
+                chosen_action = np.random.choice(ids)
+                self.actor = tf.keras.models.load_model(f"F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/actor{self.episode-2}",  compile=False)
+                self.critic = tf.keras.models.load_model(f"F:/SIiUM3/ViZDoom/model_actor3_a38/model_backup/critic{self.episode-2}",  compile=False)
+                self.actor.compile(loss = 'mse', optimizer = Adam(learning_rate_actor),  metrics=['accuracy'])
+                self.critic.compile(loss = 'mse', optimizer = Adam(learning_rate_critic), metrics=['accuracy'])
+                
+                if self.episode > 2:
+                    self.episode -= 2
+
+
+
+        else:
+            ids = np.arange(self.num_actions)
             chosen_action = np.random.choice(ids)
-            self.actor = tf.keras.models.load_model(f"F:/SIiUM3/ViZDoom/model_actor2_a37/model_backup/actor{self.episode-2}",  compile=False)
-            self.critic = tf.keras.models.load_model(f"F:/SIiUM3/ViZDoom/model_actor2_a37/model_backup/critic{self.episode-2}",  compile=False)
-            self.actor.compile(loss = 'mse', optimizer = Adam(learning_rate_actor),  metrics=['accuracy'])
-            self.critic.compile(loss = 'mse', optimizer = Adam(learning_rate_critic), metrics=['accuracy'])
-            
-            if self.episode > 2:
-                self.episode -= 2
-
-
-
-        # else:
-        #     ids = np.arange(self.num_actions)
-        #     chosen_action = np.random.choice(ids)
         return chosen_action
 
 
@@ -271,10 +320,10 @@ class AgentCritic:
         self.actor.optimizer.apply_gradients(zip(gradient_actor, self.actor.trainable_variables))
         self.critic.optimizer.apply_gradients(zip(gradient_critic, self.critic.trainable_variables))
 
-        # if self.epsilon > self.epsilon_min:
-        #     self.epsilon *= self.epsilon_decay
-        # else:
-        #     self.epsilon = self.epsilon_min
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+        else:
+            self.epsilon = self.epsilon_min
 
 def extractDigits(*argv):
     if len(argv) == 1:
@@ -307,57 +356,19 @@ def update_buffer(img, framebuffer):
 def get_reward(action_reward, game_variables, game_variables_next):
     reward = 0
     if game_variables_next[1] - game_variables[1] > 0:
-        reward += 0.5
-    elif game_variables_next[1] - game_variables[1] == 0 and \
-        ( game_variables_next[9] - game_variables[9] < 0 or \
-          game_variables_next[10] - game_variables[10] < 0 or \
-          game_variables_next[11] - game_variables[11] < 0 or \
-          game_variables_next[12] - game_variables[12] < 0 or \
-          game_variables_next[13] - game_variables[13] < 0 or \
-          game_variables_next[14] - game_variables[14] < 0 ):
-        reward -= 0.5
-
-    elif game_variables_next[2] - game_variables[2] > 0:
         reward += 5.0
+    elif game_variables_next[2] - game_variables[2] > 0:
+        reward += 50.0
     elif game_variables_next[2] - game_variables[2] < 0:
         reward -= 0.1
-    elif game_variables_next[3] - game_variables[3] > 0:
-        reward -= 0.05
     elif game_variables_next[4] - game_variables[4] > 0:
-        reward -= 0.5   
+        reward -= 5.0   
     elif game_variables_next[15] - game_variables[15] > 0:
         reward += 100.0
     elif game_variables_next[15] - game_variables[15] < 0:
-        reward -= 1.0
-
+        reward -= 10.0
     return reward + action_reward
-    
 
-def save_memory2file(filepath, framebuffer, action, reward, framebuffer_next, done):
-    saved_memory = {
-    "framebuffer":framebuffer.tolist(),
-    "action":action, #.tolist(),
-    "reward":reward,
-    "framebuffer_next":framebuffer_next.tolist()
-    }
-
-    # Check if the file already exists
-    if os.path.exists(filepath):
-        # Load existing data from the file
-        with open(filepath, "rb") as file:
-            existing_data = pickle.load(file)
-
-        # Append the new data to the existing data
-        existing_data.append(saved_memory)
-
-        # Write the updated data to the file
-        with open(filepath, "wb") as file:
-            pickle.dump(existing_data, file)
-
-    else:
-        # Create a new file and write the new data to it
-        with open(filepath, "wb") as file:
-            pickle.dump([saved_memory], file)
 
 def loadall(filename):
     with open(filename, "rb") as f:
@@ -370,8 +381,6 @@ def loadall(filename):
 def load_pickle(filepath): 
     replay_memory = deque(maxlen=replay_memory_size)
     saved_memory = loadall(filepath)
-    # with open(filepath, "rb") as file:
-    #     saved_memory = pickle.load(file)
 
     for memories in saved_memory:
         for memory in memories:
@@ -380,47 +389,7 @@ def load_pickle(filepath):
             reward = memory["reward"]
             framebuffer_next = memory["framebuffer_next"]
 
-            if action != 0:
-                replay_memory.append((np.array(framebuffer, dtype=np.float32), np.array(action, dtype=np.int32), 
-                                    float(reward), np.array(framebuffer_next, dtype=np.float32), 0))
+            replay_memory.append((np.array(framebuffer, dtype=np.float32), np.array(action, dtype=np.int32), 
+                                float(reward), np.array(framebuffer_next, dtype=np.float32), 0))
     print(f"len(replay_memory): {len(replay_memory)}")
     return replay_memory
-
-    
-    
-
-# def run(agent, game, actions, train_scores, framebuffer, framebuffer_next, replay_memory):
-#     reward = 0
-#     state = game.get_state()
-#     screen_buf = preprocess(state.screen_buffer)
-#     framebuffer = update_buffer(screen_buf, framebuffer[:,:-90])
-#     action = agent.choose_action(framebuffer)
-#     game_variables = state.game_variables
-#     action_reward = game.make_action(actions[action], frames_per_action)
-#     if not game.is_episode_finished():
-
-
-#         next_state = game.get_state()
-#         game_variables_next = next_state.game_variables
-#         reward = get_reward(action_reward, game_variables, game_variables_next)
-
-#         # if not done:
-#         next_screen_buf = preprocess(next_state.screen_buffer)
-#         framebuffer_next = update_buffer(next_screen_buf, framebuffer_next[:,:-90])
-#         replay_memory.append((framebuffer, action, reward, framebuffer_next, 0))
-
-#         # else:
-#         #     next_screen_buf = tf.zeros(shape=screen_buf.shape)
-#         #     framebuffer_next = update_buffer(next_screen_buf, framebuffer_next[:,:-90])
-
-
-#         if len(replay_memory) >= batch_size:    
-#             screen_buf, actions, rewards, next_screen_buf, dones = split_tuple(get_samples(replay_memory))
-
-#             agent.train(screen_buf, actions, rewards, next_screen_buf, dones)
-
-#     if game.is_player_dead():
-#         train_scores.append(game.get_total_reward())
-
-#     return train_scores, action, reward, framebuffer, framebuffer_next
-
