@@ -9,7 +9,7 @@ from random import choice
 import time
 # from agent_example import Agent
 import vizdoom as vzd
-from agentCritic3 import *
+from agentCritic5 import *
 
 game = vzd.DoomGame()
 # Use CIG example config or your own.
@@ -77,7 +77,7 @@ replay_memory = deque(maxlen=replay_memory_size)
 
 framebuffer = np.zeros(resolution_buffer, 'float32')
 framebuffer_next = np.zeros(resolution_buffer, 'float32')
-filepath = 'F:/SIiUM3/ViZDoom/buffer/framebuffer_agent3_map03.pickle'
+filepath = 'F:/SIiUM3/ViZDoom/buffer/framebuffer_agent5_map03.pickle'
 print((vzd.scenarios_path))
 with open(filepath, "wb") as file:
             
@@ -92,7 +92,7 @@ with open(filepath, "wb") as file:
         for i in range(bots):
             game.send_game_command("addbot")
 
-        game.send_game_command("pukename change_difficulty 3")
+        game.send_game_command("pukename change_difficulty 1")
 
         while not game.is_episode_finished():
 
@@ -101,11 +101,11 @@ with open(filepath, "wb") as file:
             state = game.get_state()
 
             screen_buf = preprocess(state.screen_buffer)
-            framebuffer = update_buffer(screen_buf, framebuffer[:,:-90])
+            framebuffer = update_buffer(screen_buf, framebuffer[:,:-resolution[1]])
             game.advance_action()
             act = game.get_last_action()
             action = [k for k, v in dict_actions.items() if v == act]
-            print(f"action: {action}, act: {act}")
+            # print(f"action: {action}, act: {act}")
             game_variables = state.game_variables
             action_reward = 0
             if game.is_episode_finished():
@@ -115,7 +115,7 @@ with open(filepath, "wb") as file:
             game_variables_next = next_state.game_variables
             reward = get_reward(action_reward, game_variables, game_variables_next)
             next_screen_buf = preprocess(next_state.screen_buffer)
-            framebuffer_next = update_buffer(next_screen_buf, framebuffer_next[:,:-90])
+            framebuffer_next = update_buffer(next_screen_buf, framebuffer_next[:,:-resolution[1]])
             replay_memory.append((framebuffer, action, reward, framebuffer_next, 0))
 
             if action != [] and action != 0:

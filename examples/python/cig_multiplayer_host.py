@@ -17,7 +17,7 @@ game = vzd.DoomGame()
 # Use CIG example config or your own.
 game.load_config(os.path.join(vzd.scenarios_path, "multi.cfg"))
 
-# game.set_doom_map("map02")  # Full deathmatch.
+game.set_doom_map("map03")  # Full deathmatch.
 
 # Host game with options that will be used in the competition.
 game.add_game_args(
@@ -27,7 +27,7 @@ game.add_game_args(
     "-port 5029 "  # Specifies the port (default is 5029).
     "+viz_connect_timeout 60 "  # Specifies the time (in seconds), that the host will wait for other players (default is 60).
     "-deathmatch "  # Deathmatch rules are used for the game.
-    "+timelimit 1.0 "  # The game (episode) will end after this many minutes have elapsed.
+    "+timelimit 2.0 "  # The game (episode) will end after this many minutes have elapsed.
     "+sv_forcerespawn 1 "  # Players will respawn automatically after they die.
     "+sv_noautoaim 1 "  # Autoaim is disabled for all players.
     "+sv_respawnprotect 1 "  # Players will be invulnerable for two second after spawning.
@@ -48,10 +48,10 @@ game.add_game_args("+viz_bots_path F:/SIiUM3/ViZDoom/scenarios/bots.cfg")
 
 # During the competition, async mode will be forced for all agents.
 # game.set_mode(vzd.Mode.PLAYER)
-game.set_mode(vzd.Mode.ASYNC_PLAYER)
+game.set_mode(vzd.Mode.PLAYER)
 
-# game.set_window_visible(False)
-game.set_window_visible(True)
+game.set_window_visible(False)
+# game.set_window_visible(True)
 
 game.init()
 
@@ -68,8 +68,6 @@ for i in range(episodes):
     print(f"Episode #  {i + 1} Player host")
 # Play until the game (episode) is over.
     while not game.is_episode_finished():
-        sleep(0.1)
-
         # game.send_game_command('addbot')
 
         # Get the state.
